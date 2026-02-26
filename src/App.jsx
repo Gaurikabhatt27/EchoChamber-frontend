@@ -3,6 +3,8 @@ import { Toaster } from 'react-hot-toast';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ProtectedRoute from './components/ProtectedRoute';
+import Dashboard from './pages/Dashboard';
+import CreateProject from './pages/CreateProject';
 
 const Dashboard = () => <div className="p-8 text-white">Welcome to the Dashboard!</div>;
 
@@ -20,6 +22,15 @@ function App() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/create-project" 
+          element={
+            <ProtectedRoute>
+              <CreateProject />
             </ProtectedRoute>
           } 
         />
