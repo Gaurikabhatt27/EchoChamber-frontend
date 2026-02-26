@@ -6,12 +6,13 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Dashboard from './pages/Dashboard';
 import CreateProject from './pages/CreateProject';
 import ProjectDetails from './pages/ProjectDetails';
+import Navbar from './components/Navbar';
 
 function App() {
-  return (
+    return (
     <Router>
       <Toaster position="top-center" />
-      
+      <Navbar />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
