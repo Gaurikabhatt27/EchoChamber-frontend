@@ -5,8 +5,7 @@ import Register from './pages/Register';
 import ProtectedRoute from './components/ProtectedRoute';
 import Dashboard from './pages/Dashboard';
 import CreateProject from './pages/CreateProject';
-
-const Dashboard = () => <div className="p-8 text-white">Welcome to the Dashboard!</div>;
+import ProjectDetails from './pages/ProjectDetails';
 
 function App() {
   return (
@@ -31,6 +30,15 @@ function App() {
           element={
             <ProtectedRoute>
               <CreateProject />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/project/:id" 
+          element={
+            <ProtectedRoute>
+              <ProjectDetails />
             </ProtectedRoute>
           } 
         />
