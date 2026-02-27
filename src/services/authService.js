@@ -18,3 +18,8 @@ export const logout = () => {
   localStorage.removeItem('token');
   localStorage.removeItem('user');
 };
+
+export const getLeaderboard = async () => {
+  const response = await api.get('/auth/leaderboard');
+  return response.data;
+};
