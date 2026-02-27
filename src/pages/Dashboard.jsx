@@ -131,13 +131,22 @@ const Dashboard = () => {
             </h1>
             <p className="text-gray-400 font-medium text-lg">Join the debate. Vote on ideas. Shape the future.</p>
           </div>
-          <Link 
-            to="/create-project" 
-            className="group flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-bold shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.5)] transition-all transform hover:-translate-y-0.5"
-          >
-            <Plus size={20} className="transition-transform group-hover:rotate-90" />
-            <span>Launch Debate</span>
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link 
+              to="/leaderboard" 
+              className="group flex items-center gap-2 bg-[#1e293b] hover:bg-gray-800 border border-gray-700 text-white px-5 py-3 rounded-xl font-bold hover:border-purple-500 transition-all transform hover:-translate-y-0.5"
+            >
+              <span className="text-xl">🏆</span>
+              <span className="group-hover:text-purple-400 transition-colors">Leaderboard</span>
+            </Link>
+            <Link 
+              to="/create-project" 
+              className="group flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-bold shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.5)] transition-all transform hover:-translate-y-0.5"
+            >
+              <Plus size={20} className="transition-transform group-hover:rotate-90" />
+              <span>Launch Debate</span>
+            </Link>
+          </div>
         </div>
 
         {/* Search and Filter Section */}
@@ -221,8 +230,13 @@ const Dashboard = () => {
 
                   {/* Actions */}
                   <div className="flex items-center gap-4">
-                    <span className="text-xs text-gray-500 font-medium">
+                    <span className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
                       By {project.creator?.name?.split(' ')[0] || 'Anon'}
+                      {project.creator?.reputationScore !== undefined && (
+                        <span className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 font-bold" title="Total Reputation Points">
+                          ⭐ {project.creator.reputationScore}
+                        </span>
+                      )}
                     </span>
                     <Link 
                       to={`/project/${project._id}`} 
