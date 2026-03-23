@@ -1,14 +1,21 @@
 import { useEffect, useState } from 'react';
 import { getProjects, voteProject } from '../services/projectService.js';
-import { Link } from 'react-router-dom';
-import { ThumbsUp, ThumbsDown, Search, Filter, Plus } from 'lucide-react';
+import { getDuels, createDuel, getDuelHistory } from '../services/duelService.js';
+import { Link, useNavigate } from 'react-router-dom';
+import { ThumbsUp, ThumbsDown, Search, Filter, Plus, Swords } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 import toast from 'react-hot-toast';
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const socket = useSocket();
   const [projects, setProjects] = useState([]);
+  const [duels, setDuels] = useState([]);
+  const [duelHistory, setDuelHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isCreatingDuel, setIsCreatingDuel] = useState(false);
   
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState("");
@@ -22,10 +29,43 @@ const Dashboard = () => {
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm, filter]);
 
+  // Real-time WebSockets logic for Dashboard Feedback
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleProjectVoted = ({ projectId, upvotes, downvotes }) => {
+      setProjects(currentProjects => 
+        currentProjects.map(p => 
+          p._id === projectId 
+            ? { ...p, upvotes, downvotes } 
+            : p
+        )
+      );
+    };
+
+    socket.on('project_voted', handleProjectVoted);
+
+    return () => {
+      socket.off('project_voted', handleProjectVoted);
+    };
+  }, [socket]);
+
   const fetchProjects = async (search, filterType) => {
     try {
-      const data = await getProjects({ search, sortBy: filterType });
-      setProjects(data);
+      const promises = [
+         getProjects({ search, sortBy: filterType }),
+         getDuels()
+      ];
+      if (user) {
+         promises.push(getDuelHistory());
+      }
+      
+      const results = await Promise.all(promises);
+      setProjects(results[0]);
+      setDuels(results[1]);
+      if (user && results[2]) {
+         setDuelHistory(results[2]);
+      }
     } catch (error) {
       toast.error('Failed to load debates');
     } finally {
@@ -33,8 +73,34 @@ const Dashboard = () => {
     }
   };
 
+  const handleCreateDuel = async () => {
+    if (!user) {
+      toast.error('You must be logged in to duel');
+      navigate('/login');
+      return;
+    }
+    const topic = window.prompt("What do you want to debate? (e.g. 'React is better than Angular')");
+    if (!topic || !topic.trim()) return;
+
+    try {
+      setIsCreatingDuel(true);
+      const newDuel = await createDuel(topic);
+      navigate(`/duel/${newDuel._id}`);
+    } catch (err) {
+      toast.error('Failed to create duel match');
+    } finally {
+      setIsCreatingDuel(false);
+    }
+  };
+
   const handleVote = async (projectId, currentUpvotes = [], currentDownvotes = []) => {
-    const hasUpvoted = currentUpvotes.includes(user?.id);
+    if (!user) {
+      toast.error('You must be logged in to vote');
+      navigate('/login');
+      return;
+    }
+
+    const hasUpvoted = currentUpvotes.includes(user?._id || user?.id);
     const voteType = hasUpvoted ? 'remove' : 'upvote';
 
     setProjects(currentProjects => 
@@ -44,10 +110,10 @@ const Dashboard = () => {
         let newDownvotes = [...(p.downvotes || [])];
 
         if (voteType === 'upvote') {
-          newUpvotes.push(user?.id);
-          newDownvotes = newDownvotes.filter(id => id !== user?.id);
+          newUpvotes.push(user?._id || user?.id);
+          newDownvotes = newDownvotes.filter(id => id !== (user?._id || user?.id));
         } else if (voteType === 'remove') {
-          newUpvotes = newUpvotes.filter(id => id !== user?.id);
+          newUpvotes = newUpvotes.filter(id => id !== (user?._id || user?.id));
         }
 
         return { ...p, upvotes: newUpvotes, downvotes: newDownvotes };
@@ -56,6 +122,7 @@ const Dashboard = () => {
 
     try {
       await voteProject(projectId, voteType);
+      // Removed fetchProjects() since WebSockets handles the real-time vote distribution securely!
     } catch (error) {
       toast.error('Failed to register vote. Reverting...');
       fetchProjects(); 
@@ -63,7 +130,13 @@ const Dashboard = () => {
   };
 
   const handleDownvote = async (projectId, currentUpvotes = [], currentDownvotes = []) => {
-    const hasDownvoted = currentDownvotes.includes(user?.id);
+    if (!user) {
+      toast.error('You must be logged in to vote');
+      navigate('/login');
+      return;
+    }
+
+    const hasDownvoted = currentDownvotes.includes(user?._id || user?.id);
     const voteType = hasDownvoted ? 'remove' : 'downvote';
 
     setProjects(currentProjects => 
@@ -73,10 +146,10 @@ const Dashboard = () => {
         let newDownvotes = [...(p.downvotes || [])];
 
         if (voteType === 'downvote') {
-          newDownvotes.push(user?.id);
-          newUpvotes = newUpvotes.filter(id => id !== user?.id);
+          newDownvotes.push(user?._id || user?.id);
+          newUpvotes = newUpvotes.filter(id => id !== (user?._id || user?.id));
         } else if (voteType === 'remove') {
-          newDownvotes = newDownvotes.filter(id => id !== user?.id);
+          newDownvotes = newDownvotes.filter(id => id !== (user?._id || user?.id));
         }
 
         return { ...p, upvotes: newUpvotes, downvotes: newDownvotes };
@@ -85,6 +158,7 @@ const Dashboard = () => {
 
     try {
       await voteProject(projectId, voteType);
+      // Removed fetchProjects() since WebSockets handles the real-time vote distribution securely!
     } catch (error) {
       toast.error('Failed to register vote. Reverting...');
       fetchProjects(); 
@@ -131,7 +205,15 @@ const Dashboard = () => {
             </h1>
             <p className="text-gray-400 font-medium text-lg">Join the debate. Vote on ideas. Shape the future.</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <button 
+              onClick={handleCreateDuel}
+              disabled={isCreatingDuel}
+              className="group flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-5 py-3 rounded-xl font-black transition-all transform hover:-translate-y-0.5 shadow-[0_0_20px_rgba(220,38,38,0.3)] disabled:opacity-50"
+            >
+              <Swords size={20} className="transition-transform group-hover:scale-110" />
+              <span>1v1 Duel Match</span>
+            </button>
             <Link 
               to="/leaderboard" 
               className="group flex items-center gap-2 bg-[#1e293b] hover:bg-gray-800 border border-gray-700 text-white px-5 py-3 rounded-xl font-bold hover:border-purple-500 transition-all transform hover:-translate-y-0.5"
@@ -139,13 +221,26 @@ const Dashboard = () => {
               <span className="text-xl">🏆</span>
               <span className="group-hover:text-purple-400 transition-colors">Leaderboard</span>
             </Link>
-            <Link 
-              to="/create-project" 
-              className="group flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-bold shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.5)] transition-all transform hover:-translate-y-0.5"
-            >
-              <Plus size={20} className="transition-transform group-hover:rotate-90" />
-              <span>Launch Debate</span>
-            </Link>
+            {user ? (
+              <Link 
+                to="/create-project" 
+                className="group flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-bold shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.5)] transition-all transform hover:-translate-y-0.5"
+              >
+                <Plus size={20} className="transition-transform group-hover:rotate-90" />
+                <span>Launch Debate</span>
+              </Link>
+            ) : (
+              <button 
+                onClick={() => {
+                  toast.error('You must be logged in to launch a debate');
+                  navigate('/login');
+                }}
+                className="group flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-bold shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.5)] transition-all transform hover:-translate-y-0.5"
+              >
+                <Plus size={20} className="transition-transform group-hover:rotate-90" />
+                <span>Launch Debate</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -177,14 +272,107 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Active Duels Banner (If any) */}
+        {duels.length > 0 && (
+          <div className="mb-10">
+            <h2 className="text-xl font-black text-white mb-4 flex items-center gap-2">
+              <span className="text-red-500">⚔️</span> Live Dueling Arena
+            </h2>
+            <div className="flex overflow-x-auto pb-4 gap-4 snap-x">
+               {duels.map(duel => (
+                 <Link to={`/duel/${duel._id}`} key={duel._id} className="min-w-[300px] shrink-0 bg-gradient-to-br from-red-950/40 to-[#111827] border border-red-900/50 p-5 rounded-xl hover:border-red-500/50 transition-colors snap-start flex flex-col group relative overflow-hidden">
+                    {/* Background pulse effect for active */}
+                    {duel.status === 'active' && <div className="absolute top-0 right-0 w-16 h-16 bg-red-500/20 rounded-full blur-xl pointer-events-none animate-pulse"></div>}
+                    
+                    <div className="flex justify-between items-center mb-3">
+                       <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-sm border 
+                          ${duel.status === 'waiting' ? 'bg-gray-800/50 text-gray-400 border-gray-700' : 
+                            duel.status === 'active' ? 'bg-red-500/10 text-red-500 border-red-500/30' : 'bg-orange-500/10 text-orange-500 border-orange-500/30'}
+                       `}>
+                          {duel.status === 'waiting' ? 'Open Challenge' : duel.status}
+                       </span>
+                    </div>
+                    <h3 className="font-bold text-lg mb-4 text-white group-hover:text-red-400 line-clamp-2">{duel.topic}</h3>
+                    
+                    <div className="mt-auto flex justify-between items-center bg-gray-900/50 p-3 rounded-lg border border-gray-800">
+                       <div className="flex flex-col text-center w-[40%]">
+                          <span className="text-xs text-red-400 font-bold truncate">{duel.challenger?.name?.split(' ')[0] || 'Unknown'}</span>
+                       </div>
+                       <span className="text-gray-600 font-black italic text-sm">VS</span>
+                       <div className="flex flex-col text-center w-[40%]">
+                          {duel.defender ? (
+                            <span className="text-xs text-blue-400 font-bold truncate">{duel.defender?.name?.split(' ')[0] || 'Unknown'}</span>
+                          ) : (
+                            <span className="text-xs text-gray-500 font-bold italic truncate">Waiting...</span>
+                          )}
+                       </div>
+                    </div>
+                 </Link>
+               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Duel History Banner (If any) */}
+        {user && duelHistory.length > 0 && (
+          <div className="mb-10">
+            <h2 className="text-xl font-black text-white mb-4 flex items-center gap-2">
+              <span className="text-purple-500">📜</span> My Duel History
+            </h2>
+            <div className="flex overflow-x-auto pb-4 gap-4 snap-x">
+               {duelHistory.map(duel => {
+                 const isChallenger = duel.challenger._id === user?._id || duel.challenger._id === user?.id;
+                 const opponent = isChallenger ? duel.defender : duel.challenger;
+                 let outcome = 'DRAW';
+                 let borderColor = 'border-gray-600/50';
+                 let textColor = 'text-gray-400';
+                 let bgGradient = 'from-gray-900/40';
+                 
+                 if (duel.winner) {
+                    if (duel.winner === user?._id || duel.winner === user?.id) {
+                       outcome = 'VICTORY';
+                       borderColor = 'border-green-500/50';
+                       textColor = 'text-green-400';
+                       bgGradient = 'from-green-950/40';
+                    } else {
+                       outcome = 'DEFEAT';
+                       borderColor = 'border-red-500/50';
+                       textColor = 'text-red-400';
+                       bgGradient = 'from-red-950/40';
+                    }
+                 }
+
+                 return (
+                 <div key={duel._id} className={`min-w-[300px] shrink-0 bg-gradient-to-br ${bgGradient} to-[#111827] border ${borderColor} p-5 rounded-xl transition-colors snap-start flex flex-col group relative overflow-hidden`}>
+                    <div className="flex justify-between items-center mb-3">
+                       <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-sm border ${borderColor} ${textColor} bg-[#111827]`}>
+                          {outcome}
+                       </span>
+                       <span className="text-xs text-gray-500 font-bold">{new Date(duel.updatedAt).toLocaleDateString()}</span>
+                    </div>
+                    <h3 className="font-bold text-lg mb-4 text-white line-clamp-2">{duel.topic}</h3>
+                    
+                    <div className="mt-auto flex justify-between items-center bg-gray-900/50 p-3 rounded-lg border border-gray-800">
+                       <span className="text-xs text-gray-400 font-bold">vs {opponent?.name || 'Unknown'}</span>
+                       <span className="text-xs text-gray-500 font-bold">
+                          {isChallenger ? duel.challengerPoints?.length || 0 : duel.defenderPoints?.length || 0} pts fired
+                       </span>
+                    </div>
+                 </div>
+                 );
+               })}
+            </div>
+          </div>
+        )}
+
         {/* Projects Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredProjects.map((project) => {
             const upvotes = project.upvotes || [];
             const downvotes = project.downvotes || [];
             const score = upvotes.length - downvotes.length;
-            const hasUpvoted = upvotes.includes(user?.id);
-            const hasDownvoted = downvotes.includes(user?.id);
+            const hasUpvoted = upvotes.includes(user?._id || user?.id);
+            const hasDownvoted = downvotes.includes(user?._id || user?.id);
 
             return (
               <div key={project._id} className="group relative bg-[#111827]/80 backdrop-blur-sm p-6 rounded-2xl border border-gray-800 hover:border-blue-500/50 transition-all duration-300 hover:shadow-[0_0_30px_rgba(37,99,235,0.1)] hover:-translate-y-1 flex flex-col h-full">

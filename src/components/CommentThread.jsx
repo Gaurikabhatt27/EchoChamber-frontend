@@ -56,15 +56,17 @@ const CommentThread = ({ comment, allComments, projectId, onReplyPosted }) => {
         </p>
 
         {/* Action Bar (Reply Button) */}
-        <div className="flex justify-end">
-          <button 
-            onClick={() => setIsReplying(!isReplying)}
-            className="flex items-center gap-1 text-xs font-semibold text-gray-400 hover:text-blue-400 transition-colors"
-          >
-            <Reply size={14} />
-            Reply
-          </button>
-        </div>
+        {user && (
+          <div className="flex justify-end">
+            <button 
+              onClick={() => setIsReplying(!isReplying)}
+              className="flex items-center gap-1 text-xs font-semibold text-gray-400 hover:text-blue-400 transition-colors"
+            >
+              <Reply size={14} />
+              Reply
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Reply Input Box (Visible if "Reply" is clicked) */}

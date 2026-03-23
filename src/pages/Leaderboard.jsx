@@ -51,10 +51,11 @@ const Leaderboard = () => {
         </div>
 
         {/* Podium for Top 3 */}
-        {leaders.length >= 3 && (
-          <div className="flex flex-col md:flex-row justify-center items-end gap-6 mb-16 mt-8 h-64">
+        {leaders.length > 0 && (
+          <div className="flex flex-col md:flex-row justify-center items-center md:items-end gap-12 md:gap-6 mb-16 mt-12 md:mt-16">
             {/* Rank 2 - Silver */}
-            <div className="order-2 md:order-1 flex flex-col items-center flex-1 z-10">
+            {leaders.length >= 2 && (
+              <div className="order-2 md:order-1 flex flex-col items-center flex-1 z-10 w-full">
               <div className="relative mb-4">
                 <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center border-4 border-gray-400 shadow-[0_0_20px_rgba(156,163,175,0.4)]">
                   <span className="text-2xl font-bold text-gray-300">#2</span>
@@ -67,9 +68,10 @@ const Leaderboard = () => {
               <div className="w-full bg-gradient-to-t from-gray-900 to-gray-800 h-32 rounded-t-xl border border-gray-700/50 flexjustify-center pt-4">
               </div>
             </div>
+            )}
 
             {/* Rank 1 - Gold */}
-            <div className="order-1 md:order-2 flex flex-col items-center flex-1 transform -translate-y-8 z-20">
+            <div className="order-1 md:order-2 flex flex-col items-center flex-1 transform md:-translate-y-8 z-20 w-full">
               <div className="relative mb-4">
                 <div className="absolute -top-6 -right-6 text-yellow-500 animate-bounce">
                   <Medal size={32} />
@@ -87,7 +89,8 @@ const Leaderboard = () => {
             </div>
 
             {/* Rank 3 - Bronze */}
-            <div className="order-3 md:order-3 flex flex-col items-center flex-1 z-0">
+            {leaders.length >= 3 && (
+              <div className="order-3 md:order-3 flex flex-col items-center flex-1 z-0 w-full">
               <div className="relative mb-4">
                 <div className="w-16 h-16 rounded-full bg-orange-950/40 flex items-center justify-center border-4 border-orange-700 shadow-[0_0_20px_rgba(194,65,12,0.4)]">
                   <span className="text-2xl font-bold text-orange-500">#3</span>
@@ -100,6 +103,7 @@ const Leaderboard = () => {
               <div className="w-full bg-gradient-to-t from-orange-950/30 to-orange-900/20 h-24 rounded-t-xl border border-orange-800/50 flex justify-center pt-4">
               </div>
             </div>
+            )}
           </div>
         )}
 
