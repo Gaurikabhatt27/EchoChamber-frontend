@@ -7,23 +7,21 @@ import Dashboard from './pages/Dashboard';
 import CreateProject from './pages/CreateProject';
 import ProjectDetails from './pages/ProjectDetails';
 import Leaderboard from './pages/Leaderboard';
+import Navbar from './components/Navbar';
+import DuelArena from './pages/DuelArena';
 
 function App() {
-  return (
+    return (
     <Router>
       <Toaster position="top-center" />
-      
+      <Navbar />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
         <Route 
           path="/dashboard" 
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } 
+          element={<Dashboard />} 
         />
 
         <Route 
@@ -37,20 +35,17 @@ function App() {
 
         <Route 
           path="/project/:id" 
-          element={
-            <ProtectedRoute>
-              <ProjectDetails />
-            </ProtectedRoute>
-          } 
+          element={<ProjectDetails />} 
         />
 
         <Route 
           path="/leaderboard" 
-          element={
-            <ProtectedRoute>
-              <Leaderboard />
-            </ProtectedRoute>
-          } 
+          element={<Leaderboard />} 
+        />
+
+        <Route 
+          path="/duel/:id" 
+          element={<DuelArena />} 
         />
 
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
